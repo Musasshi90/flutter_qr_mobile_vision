@@ -109,49 +109,26 @@ class QrCameraC1 implements QrCamera {
 
     //Size here is Camera.Size, not android.util.Size as in the QrCameraC2 version of this method
     private Size getAppropriateSize(List<Size> sizes) {
-        // assume sizes is never 0
-        if (sizes.size() == 1) {
-            return sizes.get(0);
-        }
+        final int MAX_WIDTH = 1280;
+        final float TARGET_ASPECT = 16.f / 9.f;
+        final float ASPECT_TOLERANCE = 0.1f;
 
-        Size s = sizes.get(0);
-        Size s1 = sizes.get(1);
-
-        if (s1.width > s.width || s1.height > s.height) {
-            // ascending
-            if (info.orientation % 180 == 0) {
-                for (Size size : sizes) {
-                    s = size;
-                    if (size.height > targetHeight && size.width > targetWidth) {
-                        break;
-                    }
-                }
-            } else {
-                for (Size size : sizes) {
-                    s = size;
-                    if (size.height > targetWidth && size.width > targetHeight) {
-                        break;
-                    }
-                }
-            }
-        } else {
-            // descending
-            if (info.orientation % 180 == 0) {
-                for (Size size : sizes) {
-                    if (size.height < targetHeight || size.width < targetWidth) {
-                        break;
-                    }
-                    s = size;
-                }
-            } else {
-                for (Size size : sizes) {
-                    if (size.height < targetWidth || size.width < targetHeight) {
-                        break;
-                    }
-                    s = size;
-                }
+        Size outputSize = sizes.get(0);
+        float outputAspect = (float) outputSize.width / outputSize.height;
+        for (Size candidateSize : sizes) {
+            if (candidateSize.width > MAX_WIDTH) continue;
+            float candidateAspect = (float) candidateSize.width / candidateSize.height;
+            boolean goodCandidateAspect =
+                Math.abs(candidateAspect - TARGET_ASPECT) < ASPECT_TOLERANCE;
+            boolean goodOutputAspect =
+                Math.abs(outputAspect - TARGET_ASPECT) < ASPECT_TOLERANCE;
+            if ((goodCandidateAspect && !goodOutputAspect) ||
+                candidateSize.width > outputSize.height) {
+                outputSize = candidateSize;
+                outputAspect = candidateAspect;
             }
         }
-        return s;
+        Log.i(TAG, "Resolution chosen: " + outputSize);
+        return outputSize;
     }
 }
