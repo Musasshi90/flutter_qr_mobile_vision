@@ -16,6 +16,9 @@ import android.view.Surface;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import static android.hardware.camera2.CameraMetadata.CONTROL_AF_MODE_AUTO;
@@ -112,7 +115,7 @@ class QrCameraC2 implements QrCamera {
             int[] afModes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
 
             boolean supportsAutoFocus = false;
-            for(int afMode: afModes) {
+            for (int afMode : afModes) {
                 if (afMode == CONTROL_AF_MODE_AUTO) {
                     supportsAutoFocus = true;
                     break;
@@ -250,51 +253,36 @@ class QrCameraC2 implements QrCamera {
     }
 
     private Size getAppropriateSize(Size[] sizes) {
-        // assume sizes is never 0
-        if (sizes.length == 1) {
-            return sizes[0];
-        }
+        final int MAX_WIDTH = 1280;
+        final float TARGET_ASPECT = 16.f / 9.f;
+        final float ASPECT_TOLERANCE = 0.1f;
 
-        Size s = sizes[0];
-        Size s1 = sizes[1];
-
-        if (s1.getWidth() > s.getWidth() || s1.getHeight() > s.getHeight()) {
-            // ascending
-            if (orientation % 180 == 0) {
-                for (Size size : sizes) {
-                    s = size;
-                    if (size.getHeight() > targetHeight && size.getWidth() > targetWidth) {
-                        break;
-                    }
-                }
-            } else {
-                for (Size size : sizes) {
-                    s = size;
-                    if (size.getHeight() > targetWidth && size.getWidth() > targetHeight) {
-                        break;
-                    }
-                }
-            }
-        } else {
-            // descending
-            if (orientation % 180 == 0) {
-                for (Size size : sizes) {
-                    if (size.getHeight() < targetHeight || size.getWidth() < targetWidth) {
-                        break;
-                    }
-                    s = size;
-                }
-            } else {
-                for (Size size : sizes) {
-                    if (size.getHeight() < targetWidth || size.getWidth() < targetHeight) {
-                        break;
-                    }
-                    s = size;
-                }
+        Size outputSize = sizes[0];
+        float outputAspect = (float) outputSize.getWidth() / outputSize.getHeight();
+        for (Size candidateSize : sizes) {
+            if (candidateSize.getWidth() > MAX_WIDTH) continue;
+            float candidateAspect = (float) candidateSize.getWidth() / candidateSize.getHeight();
+            boolean goodCandidateAspect =
+                Math.abs(candidateAspect - TARGET_ASPECT) < ASPECT_TOLERANCE;
+            boolean goodOutputAspect =
+                Math.abs(outputAspect - TARGET_ASPECT) < ASPECT_TOLERANCE;
+            if ((goodCandidateAspect && !goodOutputAspect) ||
+                candidateSize.getWidth() > outputSize.getWidth()) {
+                outputSize = candidateSize;
+                outputAspect = candidateAspect;
             }
         }
-        return s;
+        Log.i(TAG, "Resolution chosen: " + outputSize);
+        return outputSize;
     }
 
 
+    private static class CompareSizesByArea implements Comparator<Size> {
+        @Override
+        public int compare(Size lhs, Size rhs) {
+            // We cast here to ensure the multiplications won't overflow.
+            return Long.signum(
+                (long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getWidth() * rhs.getHeight());
+        }
+    }
 }
