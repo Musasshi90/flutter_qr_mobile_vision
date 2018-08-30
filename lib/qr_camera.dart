@@ -7,8 +7,10 @@ import 'package:flutter/rendering.dart';
 import 'package:native_device_orientation/native_device_orientation.dart';
 import 'package:qr_mobile_vision/qr_mobile_vision.dart';
 
-final WidgetBuilder _defaultNotStartedBuilder = (context) => new Text("Camera Loading ...");
-final WidgetBuilder _defaultOffscreenBuilder = (context) => new Text("Camera Paused.");
+final WidgetBuilder _defaultNotStartedBuilder =
+    (context) => new Text("Camera Loading ...");
+final WidgetBuilder _defaultOffscreenBuilder =
+    (context) => new Text("Camera Paused.");
 final ErrorCallback _defaultOnError = (BuildContext context, Object error) {
   print("Error reading from camera: $error");
   return new Text("Error reading from camera...");
@@ -27,7 +29,8 @@ class QrCamera extends StatefulWidget {
     ErrorCallback onError,
     this.formats,
   })  : notStartedBuilder = notStartedBuilder ?? _defaultNotStartedBuilder,
-        offscreenBuilder = offscreenBuilder ?? notStartedBuilder ?? _defaultOffscreenBuilder,
+        offscreenBuilder =
+            offscreenBuilder ?? notStartedBuilder ?? _defaultOffscreenBuilder,
         onError = onError ?? _defaultOnError,
         assert(fit != null),
         super(key: key);
@@ -39,9 +42,24 @@ class QrCamera extends StatefulWidget {
   final WidgetBuilder offscreenBuilder;
   final ErrorCallback onError;
   final List<BarcodeFormats> formats;
+  QrCameraState state;
+
+  void unresume() {
+    if (state != null && state.mounted) {
+      state.unresume();
+    }
+  }
+
+  void resume() {
+    if (state != null && state.mounted) {
+      state.resume();
+    }
+  }
 
   @override
-  QrCameraState createState() => new QrCameraState();
+  QrCameraState createState() {
+    return new QrCameraState();
+  }
 }
 
 class QrCameraState extends State<QrCamera> with WidgetsBindingObserver {
@@ -60,16 +78,24 @@ class QrCameraState extends State<QrCamera> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      setState(() => onScreen = true);
+      resume();
     } else {
-      if (_asyncInitOnce != null && onScreen) {
-        QrMobileVision.stop();
-      }
-      setState(() {
-        onScreen = false;
-        _asyncInitOnce = null;
-      });
+      unresume();
     }
+  }
+
+  void unresume() {
+    if (_asyncInitOnce != null && onScreen) {
+      QrMobileVision.stop();
+    }
+    setState(() {
+      onScreen = false;
+      _asyncInitOnce = null;
+    });
+  }
+
+  void resume() {
+    setState(() => onScreen = true);
   }
 
   bool onScreen = true;
@@ -104,9 +130,12 @@ class QrCameraState extends State<QrCamera> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return new LayoutBuilder(builder: (BuildContext context, BoxConstraints constraints) {
+    widget.state = this;
+    return new LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
       if (_asyncInitOnce == null && onScreen) {
-        _asyncInitOnce = _asyncInit(constraints.maxWidth, constraints.maxHeight);
+        _asyncInitOnce =
+            _asyncInit(constraints.maxWidth, constraints.maxHeight);
       } else if (!onScreen) {
         return widget.offscreenBuilder(context);
       }
@@ -145,7 +174,8 @@ class QrCameraState extends State<QrCamera> with WidgetsBindingObserver {
               return preview;
 
             default:
-              throw new AssertionError("${details.connectionState} not supported.");
+              throw new AssertionError(
+                  "${details.connectionState} not supported.");
           }
         },
       );
@@ -177,7 +207,8 @@ class Preview extends StatelessWidget {
 
     return new NativeDeviceOrientationReader(
       builder: (context) {
-        var nativeOrientation = NativeDeviceOrientationReader.orientation(context);
+        var nativeOrientation =
+            NativeDeviceOrientationReader.orientation(context);
 
         int baseOrientation = 0;
         if (orientation != 0 && (width > height)) {
