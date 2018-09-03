@@ -250,6 +250,7 @@ class QrCameraC2 implements QrCamera {
      * Stops the background thread and its {@link Handler}.
      */
     private void stopBackgroundThread() {
+        if (mBackgroundThread == null) return;
         mBackgroundThread.quitSafely();
         try {
             mBackgroundThread.join();
