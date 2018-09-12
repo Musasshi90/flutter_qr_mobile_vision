@@ -1,11 +1,14 @@
 package com.github.rmtmckenzie.qrmobilevision;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.SurfaceTexture;
+import android.os.Build;
 import android.util.Log;
+
 import com.google.android.gms.vision.CameraSource;
 
 import java.io.IOException;
@@ -24,7 +27,7 @@ class QrReader {
         this.context = context;
         this.startedCallback = startedCallback;
 
-        if (android.os.Build.VERSION.SDK_INT >= 21) {
+        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             Log.i(TAG, "Using new camera API.");
             qrCamera = new QrCameraC2(width, height, context, texture, new QrDetector(communicator, context, barcodeFormats));
         } else {

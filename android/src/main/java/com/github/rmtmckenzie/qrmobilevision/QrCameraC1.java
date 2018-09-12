@@ -4,10 +4,15 @@ import android.annotation.TargetApi;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
+import android.os.AsyncTask;
+import android.os.Handler;
 import android.util.Log;
+
+import com.google.android.gms.flags.impl.DataUtils;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * Implements QrCamera using Deprecated Camera API
@@ -22,6 +27,11 @@ class QrCameraC1 implements QrCamera {
     private Camera.CameraInfo info = new Camera.CameraInfo();
     private int targetWidth, targetHeight;
     private Camera camera = null;
+    private Camera.Parameters parameters;
+    private static final long AUTO_FOCUS_INTERVAL_MS = 2000L;
+    private AsyncTask<?,?,?> outstandingTask;
+    private boolean stopped;
+    private boolean focusing;
 
     QrCameraC1(int width, int height, SurfaceTexture texture, QrDetector detector) {
         this.texture = texture;
@@ -32,6 +42,7 @@ class QrCameraC1 implements QrCamera {
 
     @Override
     public void start() throws QrReader.Exception {
+        stopped = false;
         int numberOfCameras = Camera.getNumberOfCameras();
         info = new Camera.CameraInfo();
         for (int i = 0; i < numberOfCameras; i++) {
@@ -45,7 +56,7 @@ class QrCameraC1 implements QrCamera {
             throw new QrReader.Exception(QrReader.Exception.Reason.noBackCamera);
         }
 
-        Camera.Parameters parameters = camera.getParameters();
+        parameters = camera.getParameters();
 
         List<String> focusModes = parameters.getSupportedFocusModes();
         if (focusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
@@ -73,17 +84,44 @@ class QrCameraC1 implements QrCamera {
                 }
             });
             camera.setPreviewTexture(texture);
+            camera.setDisplayOrientation(180);
+            autoFocusAgainLater();
             camera.startPreview();
-            camera.autoFocus(new Camera.AutoFocusCallback() {
-                @Override
-                public void onAutoFocus(boolean success, Camera camera) {
-                }
-            });
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
+
+    Camera.AutoFocusCallback cb = new Camera.AutoFocusCallback() {
+        @Override
+        public void onAutoFocus(boolean success, Camera camera) {
+            focusing = false;
+            autoFocusAgainLater();
+        }
+    };
+
+    private synchronized void autoFocusAgainLater() {
+        if (!stopped && outstandingTask == null) {
+            AutoFocusTask newTask = new AutoFocusTask();
+            try {
+                newTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                outstandingTask = newTask;
+            } catch (RejectedExecutionException ree) {
+                Log.w(TAG, "Could not request auto focus", ree);
+            }
+        }
+    }
+
+    private synchronized void cancelOutstandingTask() {
+        if (outstandingTask != null) {
+            if (outstandingTask.getStatus() != AsyncTask.Status.FINISHED) {
+                outstandingTask.cancel(true);
+            }
+            outstandingTask = null;
+        }
+    }
+
 
     @Override
     public int getWidth() {
@@ -102,6 +140,8 @@ class QrCameraC1 implements QrCamera {
 
     @Override
     public void stop() {
+        stopped = true;
+        cancelOutstandingTask();
         camera.stopPreview();
         camera.setPreviewCallback(null);
         camera.release();
@@ -155,4 +195,31 @@ class QrCameraC1 implements QrCamera {
         return s;
     }
 
+    synchronized void startFocus() {
+        outstandingTask = null;
+        if (!stopped && !focusing) {
+            try {
+                camera.autoFocus(cb);
+                focusing = true;
+            } catch (RuntimeException re) {
+                // Have heard RuntimeException reported in Android 4.0.x+; continue?
+                Log.w(TAG, "Unexpected exception while focusing", re);
+                // Try again later to keep cycle going
+                autoFocusAgainLater();
+            }
+        }
+    }
+
+    private final class AutoFocusTask extends AsyncTask<Object,Object,Object> {
+        @Override
+        protected Object doInBackground(Object... voids) {
+            try {
+                Thread.sleep(AUTO_FOCUS_INTERVAL_MS);
+            } catch (InterruptedException e) {
+                // continue
+            }
+            startFocus();
+            return null;
+        }
+    }
 }

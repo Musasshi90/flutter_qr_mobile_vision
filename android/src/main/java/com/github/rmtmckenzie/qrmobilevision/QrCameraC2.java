@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
@@ -59,7 +60,7 @@ class QrCameraC2 implements QrCamera {
     private CameraDevice cameraDevice;
 
     private Integer mLastAfState = null;
-    private static final long LOCK_FOCUS_DELAY_ON_FOCUSED = 5000;
+    private static final long LOCK_FOCUS_DELAY_ON_FOCUSED = 2000;
     private static final long LOCK_FOCUS_DELAY_ON_UNFOCUSED = 1000;
     private Handler mUiHandler = new Handler(); // UI handler
     private HandlerThread mBackgroundThread;
@@ -215,12 +216,12 @@ class QrCameraC2 implements QrCamera {
             jpegSizes = map.getOutputSizes(ImageFormat.JPEG);
 
             final boolean finalSupportsAutoFocus = isAutoFocusSupported(cameraId);
-
+            final String cameraNewId = cameraId;
             manager.openCamera(cameraId, new CameraDevice.StateCallback() {
                 @Override
                 public void onOpened(CameraDevice device) {
                     cameraDevice = device;
-                    startCamera(finalSupportsAutoFocus);
+                    startCamera(finalSupportsAutoFocus, cameraNewId);
                 }
 
                 @Override
@@ -344,7 +345,7 @@ class QrCameraC2 implements QrCamera {
         return res;
     }
 
-    private void startCamera(boolean supportsAutofocus) {
+    private void startCamera(boolean supportsAutofocus, String cameraId) {
         List<Surface> list = new ArrayList<>();
 
         Size jpegSize = getAppropriateSize(jpegSizes);
@@ -375,7 +376,6 @@ class QrCameraC2 implements QrCamera {
                 previewBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
                 previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
             }
-
             previewBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
 //            previewBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(orientation));
         } catch (java.lang.Exception e) {
