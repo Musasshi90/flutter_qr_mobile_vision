@@ -353,9 +353,7 @@ class QrCameraC2 implements QrCamera {
 
             @Override
             public void onImageAvailable(ImageReader reader) {
-                if(mBackgroundHandler!=null){
-                    mBackgroundHandler.post(mBackgroundHandlerRunnable);
-                }
+                mBackgroundHandler.post(mBackgroundHandlerRunnable);
             }
         };
 
