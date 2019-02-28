@@ -7,9 +7,6 @@ import android.hardware.Camera.Size;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.util.Log;
-
-import com.google.android.gms.flags.impl.DataUtils;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
