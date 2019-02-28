@@ -11,23 +11,16 @@ import android.media.ImageReader;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.util.Log;
-import android.util.Range;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import static android.hardware.camera2.CameraMetadata.CONTROL_AF_MODE_AUTO;
 import static android.hardware.camera2.CameraMetadata.LENS_FACING_BACK;
 
 /**
